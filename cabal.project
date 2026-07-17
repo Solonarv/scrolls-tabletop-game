@@ -1,0 +1,6 @@
+packages: .
+
+source-repository-package
+    type: git
+    location: https://github.com/klukaszek/sdl3-hs.git
+    tag: d4a6b6e21f48cafb40028537a6cc9f55aa0943d3

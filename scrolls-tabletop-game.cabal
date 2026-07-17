@@ -31,7 +31,8 @@ executable scrolls-tabletop-game
     -- other-extensions:
     build-depends:
         base ^>=4.21.2.0,
-        scrolls-tabletop-game
+        scrolls-tabletop-game,
+        sdl3
 
     hs-source-dirs:   exe
     default-language: GHC2024
