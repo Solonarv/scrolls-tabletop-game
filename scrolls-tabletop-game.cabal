@@ -1,0 +1,37 @@
+cabal-version:      3.14
+name:               scrolls-tabletop-game
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            NONE
+author:             Solonarv
+maintainer:         nstamm@gmx.de
+-- copyright:
+category:           Game
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  Scrolls.Card, Scrolls.Engine, Scrolls.CardFile, Scrolls.Predefs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base ^>=4.21.2.0, text, vector
+    hs-source-dirs:   lib
+    default-language: GHC2024
+
+executable scrolls-tabletop-game
+    import:           warnings
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:
+        base ^>=4.21.2.0,
+        scrolls-tabletop-game
+
+    hs-source-dirs:   exe
+    default-language: GHC2024
