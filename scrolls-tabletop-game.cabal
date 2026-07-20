@@ -32,7 +32,7 @@ executable scrolls-tabletop-game
     build-depends:
         base ^>=4.21.2.0,
         scrolls-tabletop-game,
-        sdl3
+        sdl2, StateVar, linear
 
     hs-source-dirs:   exe
     default-language: GHC2024

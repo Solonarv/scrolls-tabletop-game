@@ -1,55 +1,46 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind #-}
 module Main (main) where
 
 import System.Exit (exitFailure, exitSuccess)
-import SDL3 hiding (sin, cos)
+import SDL qualified
 import Data.IORef (newIORef, readIORef, IORef, writeIORef)
 import Foreign.C (CFloat)
 import Control.Monad
 import Data.Function
+import Data.StateVar
+import Linear
+import Linear.Affine
+import qualified SDL.Raw.Timer as SDL
+import SDL (KeyboardEventData(keyboardEventKeysym))
 
 main :: IO ()
 main = do
-  unfailing "set metadata" $ sdlSetAppMetadata "Scrollslike VTT" "1.0.0" ""
-  unfailing "initialize SDL3" $ sdlInit [SDL_INIT_VIDEO, SDL_INIT_EVENTS]
+  SDL.initialize [SDL.InitVideo, SDL.InitEvents]
 
-  sdlLog "Initialized subsystems:"
-  sdlLog . show =<< sdlWasInit []
+  window <- SDL.createWindow "Scrollslike VTT" SDL.defaultWindow
+    { SDL.windowInitialSize = V2 800 600
+    }
 
-  window_ <- sdlCreateWindow "Scrollslike VTT" 800 600 []
-  window <- case window_ of
-    Nothing -> do
-      sdlLog "failed to create window"
-      sdlQuit; exitFailure
-    Just w -> pure w
 
-  sdlCreateRenderer window Nothing >>= \case
-    Nothing -> do
-      sdlLog "failed to create default renderer, error:"
-      sdlLog . show =<< sdlGetError
-      sdlDestroyWindow window
-      sdlQuit
-      exitFailure
-    Just rdr -> do
-      name <- sdlGetRendererName rdr
-      sdlLog $ "created renderer named: " <> show name
-      runApp window rdr
+  rdr <- SDL.createRenderer window 0 SDL.defaultRenderer
+  runApp window rdr
 
-  sdlLog "shutting down..."
-  sdlQuit
-  sdlLog "shut down."
+  putStrLn "shutting down..."
+  SDL.quit
+  putStrLn "shut down."
   exitSuccess
 
-runApp :: SDLWindow -> SDLRenderer -> IO ()
+runApp :: SDL.Window -> SDL.Renderer -> IO ()
 runApp _win rdr = do
   shouldQuitRef <- newIORef False
-  freq <- sdlGetPerformanceFrequency
+  freq <- SDL.getPerformanceFrequency
   fix \loop -> do
-    tickTimeNow <- sdlGetPerformanceCounter
+    tickTimeNow <- SDL.getPerformanceCounter
     let timeNow = fromIntegral tickTimeNow / fromIntegral freq
-    sdlPumpEvents
+    SDL.pumpEvents
     shouldQuit <- processEvents shouldQuitRef
     unless shouldQuit do
       renderFrame rdr timeNow
@@ -58,34 +49,26 @@ runApp _win rdr = do
 
 processEvents :: IORef Bool -> IO Bool
 processEvents shouldQuitRef = do
-  fix \loop -> sdlPollEvent >>= \case
+  fix \loop -> SDL.pollEvent >>= \case
     Nothing -> pure ()
-    Just ev
-      | SDLEventQuit{} <- ev -> writeIORef shouldQuitRef True
-      | SDLEventKeyboard ke <- ev
-      , SDL_SCANCODE_Q <- ke.sdlKeyboardScancode
-      , ke.sdlKeyboardDown -> writeIORef shouldQuitRef True
+    Just SDL.Event{eventPayload=ev}
+      | SDL.QuitEvent{} <- ev -> writeIORef shouldQuitRef True
+      | SDL.KeyboardEvent ke <- ev
+      , SDL.ScancodeQ <- ke.keyboardEventKeysym.keysymScancode
+      , SDL.Pressed <- ke.keyboardEventKeyMotion -> writeIORef shouldQuitRef True
       | otherwise -> do
         done <- readIORef shouldQuitRef
         unless done loop
   readIORef shouldQuitRef
 
-renderFrame :: SDLRenderer -> CFloat -> IO ()
+renderFrame :: SDL.Renderer -> CFloat -> IO ()
 renderFrame rdr t = do
-  let rect = SDLFRect (100 * cos t + 400) (100 * sin t + 300) 50 50
+  let rect = SDL.Rectangle (P (V2 (100 * cos t + 400) (100 * sin t + 300)))  (V2 50 50)
 
-  sdlSetRenderDrawColor rdr 32 32 64 255
-  sdlRenderClear rdr
-  sdlSetRenderDrawColor rdr 255 87 65 255
+  SDL.rendererDrawColor rdr $= V4 32 32 64 255
+  SDL.clear rdr
+  SDL.rendererDrawColor rdr $= V4 255 87 65 255
 
-  sdlRenderFillRect rdr (Just rect)
+  SDL.fillRectF rdr rect
 
-  void $ sdlRenderPresent rdr
-
-
-unfailing :: String -> IO Bool -> IO ()
-unfailing msg act = do
-  success <- act
-  unless success $ do
-    sdlLog ("failed to " <> msg)
-    exitFailure
+  SDL.present rdr
